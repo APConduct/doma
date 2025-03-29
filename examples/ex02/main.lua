@@ -1,34 +1,34 @@
-local love = require("love")
 local doma = require("doma")
+local love = require("love")
 local event = doma.event
-local backend = doma.backend
 
-local button -- Declare button outside love.load so it persists
+local myContainer
+local draggable
 
 function love.load()
-    love.window.setTitle("doma UI Demo")
-    -- Create the button once during load
-    button = doma.button("Click Me", 50, 50, 100, 40,
-        function()
-            print("Button Clicked!")
-        end,
-        function()
-            print("Hovered!")
-        end,
-        function()
-            print("Button Released!")
-        end
-    )
+    myContainer = doma.container(50, 50, 300, 200)
+
+    local btn1 = doma.button("Button 1", 20, 20, 100, 30, function()
+        print("Button 1 clicked!")
+    end)
+
+    local btn2 = doma.button("Button 2", 20, 60, 100, 30, function()
+        print("Button 2 clicked!")
+    end)
+
+    draggable = doma.draggable(140, 20, 50, 50)
+
+    myContainer:add_element(btn1)
+    myContainer:add_element(btn2)
+    myContainer:add_element(draggable)
 end
 
 function love.update(dt)
-    local title = doma.element("text", { text = "Hello, doma!", x = 50, y = 20 })
-    -- Don't recreate the button here
-    -- Just update it if needed
+    -- Update logic here if needed
 end
 
 function love.draw()
-    doma.draw()
+    doma.draw() -- This is all we need now
 end
 
 function love.mousepressed(x, y, button)
