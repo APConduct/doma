@@ -3,6 +3,9 @@ local backend = require("src.backend")
 local event = require("src.event")
 local utils = require("src.utils")
 
+local CURSOR_BLINK_TIME = 0.5
+local INPUT_PADDING = 5
+
 local White = { 1, 1, 1, 1 }
 local Black = { 0, 0, 0, 1 }
 
@@ -137,6 +140,112 @@ function doma.draggable(x, y, w, h)
     return obj
 end
 
+function doma.textinput(x, y, w, h, placeholder, options)
+    options = options or {}
+    local input = doma.element("textinput", {
+        x = x,
+        y = y,
+        w = w,
+        h = h,
+        text = "",
+        placeholder = placeholder or "",
+        cursor_position = 0,
+        cursor_visible = true,
+        cursor_timer = 0,
+        selected = false,
+        default_color = options.default_color or White,
+        current_color = options.default_color or White,
+        border_color = options.border_color or { 0.7, 0.7, 0.7, 1 },
+        text_color = options.text_color or Black,
+        placeholder_color = options.placeholder_color or { 0.7, 0.7, 0.7, 1 },
+        radius = options.radius or 5,
+        on_change = options.on_change,
+        on_submit = options.on_submit,
+        max_length = options.max_length or 100
+    })
+
+    -- Handle text input
+    event.on("textinput", function(t)
+        if input.props.selected and #input.props.text < input.props.max_length then
+            input.props.text = input.props.text:sub(1, input.props.cursor_position)
+                .. t
+                .. input.props.text:sub(input.props.cursor_position + 1)
+            input.props.cursor_position = input.props.cursor_position + 1
+            if input.props.on_change then
+                input.props.on_change(input.props.text)
+            end
+        end
+    end)
+
+    -- Handle keyboard events
+    event.on("keypressed", function(key)
+        if not input.props.selected then return end
+
+        if key == "backspace" then
+            if input.props.cursor_position > 0 then
+                input.props.text = input.props.text:sub(1, input.props.cursor_position - 1)
+                    .. input.props.text:sub(input.props.cursor_position + 1)
+                input.props.cursor_position = input.props.cursor_position - 1
+                if input.props.on_change then
+                    input.props.on_change(input.props.text)
+                end
+            end
+        elseif key == "return" then
+            if input.props.on_submit then
+                input.props.on_submit(input.props.text)
+            end
+            input.props.selected = false
+        elseif key == "left" then
+            input.props.cursor_position = math.max(0, input.props.cursor_position - 1)
+        elseif key == "right" then
+            input.props.cursor_position = math.min(#input.props.text, input.props.cursor_position + 1)
+        end
+    end)
+
+    -- Handle mouse interaction
+    event.on("mousepressed", function(mx, my, button)
+        local abs_x = input.props.x + (input.props.parent and input.props.parent.props.x or 0)
+        local abs_y = input.props.y + (input.props.parent and input.props.parent.props.y or 0)
+
+        input.props.selected = mx >= abs_x and mx <= abs_x + w
+            and my >= abs_y and my <= abs_y + h
+    end)
+
+    -- Add custom draw method
+    input.draw = function(self)
+        -- Draw background
+        backend.graphics.set_color(self.props.current_color)
+        utils.draw_rounded_rect("fill", self.props.x, self.props.y, self.props.w, self.props.h, self.props.radius)
+
+        -- Draw border
+        backend.graphics.set_color(self.props.border_color)
+        utils.draw_rounded_rect("line", self.props.x, self.props.y, self.props.w, self.props.h, self.props.radius)
+
+        -- Draw text or placeholder
+        local text = self.props.text
+        if text == "" and not self.props.selected then
+            backend.graphics.set_color(self.props.placeholder_color)
+            text = self.props.placeholder
+        else
+            backend.graphics.set_color(self.props.text_color)
+        end
+
+        local text_x, text_y = utils.calculate_text_position(text,
+            self.props.x, self.props.y, self.props.w, self.props.h, "left")
+        backend.graphics.print(text, text_x, text_y)
+
+        -- Draw cursor
+        if self.props.selected and self.props.cursor_visible then
+            local cursor_x = text_x + doma.style.font:getWidth(text:sub(1, self.props.cursor_position))
+            backend.graphics.set_color(self.props.text_color)
+            backend.graphics.line(cursor_x, text_y, cursor_x, text_y + self.props.h - INPUT_PADDING * 2)
+        end
+    end
+
+    table.insert(doma.persistent_elements, input)
+    return input
+end
+
 function doma.container(x, y, w, h)
     local cont = {
         type = "container",
@@ -187,6 +296,8 @@ function doma.draw()
     -- Draw persistent elements that aren't children of containers
     for _, elem in ipairs(doma.persistent_elements) do
         if elem.type == "container" then
+            elem:draw()
+        elseif elem.type == "textinput" then
             elem:draw()
         elseif elem.type == "rect" and not elem.props.parent then
             backend.graphics.set_color(elem.props.current_color or elem.props.default_color or { 1, 1, 1, 1 })

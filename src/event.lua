@@ -12,6 +12,8 @@ event.listeners["mousemoved"] = {}
 event.listeners["mousereleased"] = {}
 event.listeners["mousepressed"] = {}
 
+event.listeners["textinput"] = {}
+
 function event.on(event_type, callback)
     if not event.listeners[event_type] then
         event.listeners[event_type] = {}
