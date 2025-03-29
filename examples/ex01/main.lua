@@ -1,6 +1,6 @@
 local doma = require("doma")
-local layout = require("doma.layout")
 local love = require("love")
+local layout = doma.layout
 
 function love.load()
     love.window.setTitle("Doma Demo")
