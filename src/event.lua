@@ -4,6 +4,14 @@ local event = {
     listeners = {}
 }
 
+event.listeners["keydown"] = {}
+event.listeners["keypressed"] = {}
+event.listeners["keyreleased"] = {}
+
+event.listeners["mousemoved"] = {}
+event.listeners["mousereleased"] = {}
+event.listeners["mousepressed"] = {}
+
 function event.on(event_type, callback)
     if not event.listeners[event_type] then
         event.listeners[event_type] = {}
