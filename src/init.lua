@@ -38,10 +38,8 @@ function doma.button(label, x, y, w, h, on_click, on_hover, on_end_hover)
         y = y,
         w = w,
         h = h,
-        -- default_color = { 0.2, 0.6, 1, 1 },
         default_color = White,
         hover_color = Black,
-        -- current_color = { 0.2, 0.6, 1, 1 },
         current_color = White,
         label = label,
         default_text_color = Black,
@@ -194,6 +192,8 @@ function doma.textinput(x, y, w, h, placeholder, options)
             if input.props.on_submit then
                 input.props.on_submit(input.props.text)
             end
+            input.props.text = ""
+            input.props.cursor_position = 0
             input.props.selected = false
         elseif key == "left" then
             input.props.cursor_position = math.max(0, input.props.cursor_position - 1)
@@ -244,6 +244,119 @@ function doma.textinput(x, y, w, h, placeholder, options)
 
     table.insert(doma.persistent_elements, input)
     return input
+end
+
+function doma.radio_group(name, options, props)
+    props = props or {}
+    local group = doma.element("radio_group", {
+        x = props.x or 0,
+        y = props.y or 0,
+        name = name,
+        options = options,
+        selected_value = props.default_value or options[1].value,
+        spacing = props.spacing or 25,
+        -- Styling
+        text_color = props.text_color or Black,
+        dot_color = props.text_color or Black,
+        hover_color = props.hover_color or { 0.9, 0.9, 0.9, 1 },
+        -- Sizes
+        radio_size = props.radio_size or 16,
+        dot_size = props.dot_size or 8,
+        -- Callback
+        on_change = props.on_change,
+        -- State
+        hovered_index = nil,
+    })
+
+    -- Calculate total height for positioning
+    group.props.height = #options * group.props.spacing
+
+    -- Mouse movement handler
+    event.on("mousemoved", function(mx, my)
+        local abs_x = group.props.x + (group.props.parent and group.props.parent.props.x or 0)
+        local abs_y = group.props.y + (group.props.parent and group.props.parent.props.y or 0)
+
+        -- Check which option is being hovered over
+        group.props.hovered_index = nil
+        for i, option in ipairs(options) do
+            local option_y = abs_y + (i - 1) * group.props.spacing
+            if mx >= abs_x and mx <= abs_x + group.props.radio_size + 100 and my >= option_y and my <= option_y + group.props.radio_size then
+                group.props.hovered_index = i
+                break
+            end
+        end
+    end)
+
+    -- Click handler
+    event.on("mousepressed", function(mx, my, button)
+        if button == 1 and group.props.hovered_index then
+            local old_val = group.props.selected_value
+            group.props.selected_value = options[group.props.hovered_index].value
+
+            if group.props.on_change and old_val ~= group.props.selected_value then
+                group.props.on_change(group.props.selected_value)
+            end
+        end
+    end)
+
+    -- Custom draw method
+    group.draw = function(self)
+        local x = self.props.x
+        local y = self.props.y
+
+        for i, option in ipairs(self.props.options) do
+            local option_y = y + (i - 1) * self.props.spacing
+            local is_hovered = i == self.props.hovered_index
+            local is_selected = option.value == self.props.selected_value
+
+            -- Draw hover background
+            if is_hovered then
+                backend.graphics.set_color(self.props.hover_color)
+                backend.graphics.rectangle("fill",
+                    x - 4,
+                    option_y - 4,
+                    self.props.radio_size + 108,
+                    self.props.radio + 8
+                )
+            end
+
+            -- Draw radio circle
+            backend.graphics.set_color(self.props.text_color)
+            backend.graphics.circle("line",
+                x + self.props.radio_size / 2,
+                option_y + self.props.radio_size / 2,
+                self.props.radio_size / 2
+            )
+
+            -- Draw selection dot
+            if is_selected then
+                backend.graphics.set_color(self.props.dot_color)
+                backend.graphics.circle("fill",
+                    x + self.props.radio_size / 2,
+                    option_y + self.props.radio_size / 2,
+                    self.props.radio_size / 2
+                )
+            end
+
+            -- Draw selection dot
+            if is_selected then
+                backend.graphics.set_color(self.props.dot_color)
+                backend.graphics.circle("fill",
+                    x + self.props.radio_size / 2,
+                    option_y + self.props.radio_size / 2,
+                    self.props.radio_size / 2
+                )
+            end
+
+            -- Draw label
+            backend.graphics.set_color(self.props.text_color)
+            backend.graphics.print(
+                option.label,
+                x + self.props.radio_size + 8,
+                option_y + (self.props.radio_size - doma.style.get_height()) / 2
+            )
+        end
+    end
 end
 
 function doma.container(x, y, w, h)
