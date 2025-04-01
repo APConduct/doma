@@ -69,6 +69,14 @@ utils.string = {
 }
 
 function utils.draw_rounded_rect(mode, x, y, w, h, radius)
+    -- Safety checks for nil values
+    if not x or not y or not w or not h then
+        print("Warning: Missing dimensions in draw_rounded_rect", x, y, w, h)
+        return
+    end
+
+    -- Ensure radius is a number and not too large
+    radius = radius or 0
     if radius <= 0 then
         backend.graphics.rectangle(mode, x, y, w, h)
         return

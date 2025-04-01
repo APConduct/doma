@@ -441,25 +441,71 @@ function doma.container(x, y, w, h)
         draw = function(self)
             -- Draw container with slight rounding
             backend.graphics.set_color(0.2, 0.2, 0.2, 1)
-            utils.draw_rounded_rect("fill", self.props.x, self.props.y, self.props.w, self.props.h, 3)
+            utils.draw_rounded_rect("fill", self.props.x, self.props.y, self.props.w, self.props.h,
+                self.props.corner_radius or 3)
 
             for _, child in ipairs(self.children) do
-                if child.props then
-                    -- Use consistent color property names
-                    backend.graphics.set_color(child.props.current_color or child.props.default_color)
-                    utils.draw_rounded_rect("fill",
+                if child.type == "text" then
+                    -- Handle text elements
+                    backend.graphics.set_color(child.props.text_color or { 1, 1, 1, 1 })
+                    local font = child.props.font_size
+                        and backend.graphics.new_font(child.props.font_size)
+                        or doma.style.font
+                    local prev_font = backend.graphics.get_font()
+                    backend.graphics.set_font(font)
+                    backend.graphics.print(
+                        child.props.text,
                         self.props.x + child.props.x,
-                        self.props.y + child.props.y,
-                        child.props.w,
-                        child.props.h,
-                        child.props.radius or 0
+                        self.props.y + child.props.y
                     )
-                    if child.props.label then
-                        backend.graphics.set_color(child.props.current_text_color or child.props.default_text_color)
-                        backend.graphics.print(child.props.label,
-                            self.props.x + child.props.x + 5,
-                            self.props.y + child.props.y + 5
+                    backend.graphics.set_font(prev_font)
+                elseif child.type == "circle" then
+                    -- Handle circle elements - they have custom draw methods
+                    if child.draw then
+                        child:draw()
+                    else
+                        if child.props.color then
+                            backend.graphics.set_color(unpack(child.props.color))
+                            backend.graphics.circle("fill",
+                                self.props.x + child.props.x,
+                                self.props.y + child.props.y,
+                                child.props.radius or 10)
+                        end
+                    end
+                elseif child.type == "slider" or child.type == "checkbox" or child.type == "dropdown" then
+                    -- Handle components with custom draw methods
+                    local parent_x = self.props.x
+                    local parent_y = self.props.y
+                    local orig_x = child.props.x
+                    local orig_y = child.props.y
+
+                    -- Temporarily adjust position for drawing within container
+                    child.props.x = parent_x + orig_x
+                    child.props.y = parent_y + orig_y
+                    child:draw()
+                    -- Restore original position
+                    child.props.x = orig_x
+                    child.props.y = orig_y
+                elseif child.props then
+                    -- Handle basic elements (rects, buttons, etc.)
+                    if child.props.w and child.props.h then
+                        backend.graphics.set_color(unpack(child.props.current_color or child.props.default_color or
+                            { 1, 1, 1, 1 }))
+                        utils.draw_rounded_rect("fill",
+                            self.props.x + child.props.x,
+                            self.props.y + child.props.y,
+                            child.props.w,
+                            child.props.h,
+                            child.props.radius or 0
                         )
+                        if child.props.label then
+                            backend.graphics.set_color(unpack(child.props.current_text_color or
+                                child.props.default_text_color or { 0, 0, 0, 1 }))
+                            backend.graphics.print(child.props.label,
+                                self.props.x + child.props.x + 5,
+                                self.props.y + child.props.y + 5
+                            )
+                        end
                     end
                 end
             end

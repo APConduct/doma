@@ -102,12 +102,14 @@ function love.load()
     pulse_circle.draw = function(self)
         -- Get backend from doma
         local backend = doma.backend
+        local parent_x = self.props.parent and self.props.parent.props.x or 0
+        local parent_y = self.props.parent and self.props.parent.props.y or 0
 
         if self.props.color then
             backend.graphics.set_color(unpack(self.props.color))
             backend.graphics.circle("fill",
-                self.props.x + (self.props.parent and self.props.parent.props.x or 0),
-                self.props.y + (self.props.parent and self.props.parent.props.y or 0),
+                self.props.x + parent_x,
+                self.props.y + parent_y,
                 self.props.radius)
         end
     end
