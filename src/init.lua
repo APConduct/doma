@@ -2,6 +2,8 @@ local layout = require("src.layout")
 local backend = require("src.backend")
 local event = require("src.event")
 local utils = require("src.utils")
+local theme = require("src.theme")
+local animation = require("src.animation")
 
 local CURSOR_BLINK_TIME = 0.5
 local INPUT_PADDING = 5
@@ -15,6 +17,8 @@ local doma = {
     layout = layout,
     backend = backend,
     event = event,
+    animation = animation,
+    theme = theme,
 }
 
 doma.style = {
@@ -472,6 +476,294 @@ function doma.container(x, y, w, h)
     return cont
 end
 
+function doma.slider(x, y, width, min_val, max_val, current_val, options)
+    options = options or {}
+    local slider = doma.element("slider", {
+        x = x,
+        y = y,
+        w = width,
+        h = options.height or 20,
+        min = min_val,
+        max = max_val,
+        value = current_val or min_val,
+        slider_width = options.slider_width or 10,
+        background_color = options.background_color or { 0.2, 0.2, 0.2, 1 },
+        slider_color = options.slider_color or { 0.8, 0.8, 0.8, 1 },
+        active_color = options.active_color or { 0.4, 0.7, 1, 1 },
+        dragging = false,
+        on_change = options.on_change,
+        show_value = options.show_value or false,
+        format_value = options.format_value or function(v) return tostring(math.floor(v)) end
+    })
+
+    -- Handle mouse interaction
+    event.on("mousepressed", function(e, mx, my, button)
+        local abs_x = slider.props.x + (slider.props.parent and slider.props.parent.props.x or 0)
+        local abs_y = slider.props.y + (slider.props.parent and slider.props.parent.props.y or 0)
+
+        if button == 1 and
+            mx >= abs_x and mx <= abs_x + slider.props.w and
+            my >= abs_y and my <= abs_y + slider.props.h then
+            slider.props.dragging = true
+            -- Update slider position immediately
+            local pos = math.max(0, math.min(1, (mx - abs_x) / slider.props.w))
+            slider.props.value = slider.props.min + pos * (slider.props.max - slider.props.min)
+            if slider.props.on_change then slider.props.on_change(slider.props.value) end
+        end
+    end)
+
+    event.on("mousemoved", function(e, mx, my)
+        if slider.props.dragging then
+            local abs_x = slider.props.x + (slider.props.parent and slider.props.parent.props.x or 0)
+            local pos = math.max(0, math.min(1, (mx - abs_x) / slider.props.w))
+            slider.props.value = slider.props.min + pos * (slider.props.max - slider.props.min)
+            if slider.props.on_change then slider.props.on_change(slider.props.value) end
+        end
+    end)
+
+    event.on("mousereleased", function(e)
+        slider.props.dragging = false
+    end)
+
+    -- Custom draw method
+    slider.draw = function(self)
+        local x, y = self.props.x, self.props.y
+        local w, h = self.props.w, self.props.h
+
+        -- Draw background track
+        backend.graphics.set_color(unpack(self.props.background_color))
+        utils.draw_rounded_rect("fill", x, y + (h - 6) / 2, w, 6, 3)
+
+        -- Calculate slider position
+        local pos = (self.props.value - self.props.min) / (self.props.max - self.props.min)
+        local slider_x = x + pos * w - self.props.slider_width / 2
+
+        -- Draw active part of track
+        backend.graphics.set_color(unpack(self.props.active_color))
+        utils.draw_rounded_rect("fill", x, y + (h - 6) / 2, slider_x - x + self.props.slider_width / 2, 6, 3)
+
+        -- Draw slider handle
+        backend.graphics.set_color(unpack(self.props.slider_color))
+        utils.draw_rounded_rect("fill", slider_x, y, self.props.slider_width, h, 5)
+
+        -- Draw value if needed
+        if self.props.show_value then
+            backend.graphics.set_color(1, 1, 1, 1)
+            local value_str = self.props.format_value(self.props.value)
+            local text_width = doma.style.font:getWidth(value_str)
+            backend.graphics.print(value_str, x + w + 10, y + (h - doma.style.font:getHeight()) / 2)
+        end
+    end
+
+    table.insert(doma.persistent_elements, slider)
+    return slider
+end
+
+function doma.checkbox(x, y, label, checked, options)
+    options = options or {}
+    local checkbox = doma.element("checkbox", {
+        x = x,
+        y = y,
+        w = options.size or 20,
+        h = options.size or 20,
+        label = label or "",
+        checked = checked or false,
+        box_color = options.box_color or White,
+        check_color = options.check_color or { 0.2, 0.7, 0.9, 1 },
+        text_color = options.text_color or White,
+        on_change = options.on_change
+    })
+
+    event.on("mousepressed", function(e, mx, my, button)
+        local abs_x = checkbox.props.x + (checkbox.props.parent and checkbox.props.parent.props.x or 0)
+        local abs_y = checkbox.props.y + (checkbox.props.parent and checkbox.props.parent.props.y or 0)
+
+        if button == 1 and
+            mx >= abs_x and mx <= abs_x + checkbox.props.w and
+            my >= abs_y and my <= abs_y + checkbox.props.h then
+            checkbox.props.checked = not checkbox.props.checked
+            if checkbox.props.on_change then
+                checkbox.props.on_change(checkbox.props.checked)
+            end
+        end
+    end)
+
+    checkbox.draw = function(self)
+        -- Draw box
+        backend.graphics.set_color(unpack(self.props.box_color))
+        utils.draw_rounded_rect("line", self.props.x, self.props.y, self.props.w, self.props.h, 3)
+
+        -- Draw check if checked
+        if self.props.checked then
+            backend.graphics.set_color(unpack(self.props.check_color))
+            local padding = self.props.w * 0.2
+            utils.draw_rounded_rect("fill",
+                self.props.x + padding,
+                self.props.y + padding,
+                self.props.w - padding * 2,
+                self.props.h - padding * 2,
+                2)
+        end
+
+        -- Draw label
+        if self.props.label and self.props.label ~= "" then
+            backend.graphics.set_color(unpack(self.props.text_color))
+            backend.graphics.print(
+                self.props.label,
+                self.props.x + self.props.w + 10,
+                self.props.y + (self.props.h - doma.style.font:getHeight()) / 2
+            )
+        end
+    end
+
+    table.insert(doma.persistent_elements, checkbox)
+    return checkbox
+end
+
+function doma.dropdown(x, y, width, options_list, selected_index, callbacks)
+    callbacks = callbacks or {}
+    local dropdown = doma.element("dropdown", {
+        x = x,
+        y = y,
+        w = width,
+        h = 30,
+        options = options_list,
+        selected = selected_index or 1,
+        opened = false,
+        background_color = { 0.2, 0.2, 0.2, 1 },
+        text_color = { 1, 1, 1, 1 },
+        hover_color = { 0.3, 0.3, 0.5, 1 },
+        border_color = { 0.4, 0.4, 0.4, 1 },
+        hovered_option = nil,
+        on_select = callbacks.on_select,
+        on_open = callbacks.on_open,
+        on_close = callbacks.on_close
+    })
+
+    event.on("mousepressed", function(e, mx, my, button)
+        local abs_x = dropdown.props.x + (dropdown.props.parent and dropdown.props.parent.props.x or 0)
+        local abs_y = dropdown.props.y + (dropdown.props.parent and dropdown.props.parent.props.y or 0)
+
+        if button == 1 then
+            -- Check if clicked on dropdown header
+            if mx >= abs_x and mx <= abs_x + dropdown.props.w and
+                my >= abs_y and my <= abs_y + dropdown.props.h then
+                dropdown.props.opened = not dropdown.props.opened
+                if dropdown.props.opened and dropdown.props.on_open then
+                    dropdown.props.on_open()
+                elseif not dropdown.props.opened and dropdown.props.on_close then
+                    dropdown.props.on_close()
+                end
+                -- Check if clicked on an option while menu is open
+            elseif dropdown.props.opened and
+                mx >= abs_x and mx <= abs_x + dropdown.props.w and
+                my >= abs_y + dropdown.props.h and
+                my <= abs_y + dropdown.props.h + (#dropdown.props.options * dropdown.props.h) then
+                local option_index = math.floor((my - (abs_y + dropdown.props.h)) / dropdown.props.h) + 1
+                if option_index > 0 and option_index <= #dropdown.props.options then
+                    dropdown.props.selected = option_index
+                    dropdown.props.opened = false
+                    if dropdown.props.on_select then
+                        dropdown.props.on_select(dropdown.props.options[option_index], option_index)
+                    end
+                end
+            else
+                -- Clicked outside, close the dropdown
+                dropdown.props.opened = false
+                if dropdown.props.on_close then dropdown.props.on_close() end
+            end
+        end
+    end)
+
+    event.on("mousemoved", function(e, mx, my)
+        local abs_x = dropdown.props.x + (dropdown.props.parent and dropdown.props.parent.props.x or 0)
+        local abs_y = dropdown.props.y + (dropdown.props.parent and dropdown.props.parent.props.y or 0)
+
+        dropdown.props.hovered_option = nil
+
+        if dropdown.props.opened and
+            mx >= abs_x and mx <= abs_x + dropdown.props.w and
+            my >= abs_y + dropdown.props.h and
+            my <= abs_y + dropdown.props.h + (#dropdown.props.options * dropdown.props.h) then
+            local option_index = math.floor((my - (abs_y + dropdown.props.h)) / dropdown.props.h) + 1
+            if option_index > 0 and option_index <= #dropdown.props.options then
+                dropdown.props.hovered_option = option_index
+            end
+        end
+    end)
+
+    dropdown.draw = function(self)
+        -- Draw dropdown header
+        backend.graphics.set_color(unpack(self.props.background_color))
+        utils.draw_rounded_rect("fill", self.props.x, self.props.y, self.props.w, self.props.h, 5)
+
+        -- Draw border
+        backend.graphics.set_color(unpack(self.props.border_color))
+        utils.draw_rounded_rect("line", self.props.x, self.props.y, self.props.w, self.props.h, 5)
+
+        -- Draw selected option text
+        backend.graphics.set_color(unpack(self.props.text_color))
+        backend.graphics.print(
+            self.props.options[self.props.selected],
+            self.props.x + 10,
+            self.props.y + (self.props.h - doma.style.font:getHeight()) / 2
+        )
+
+        -- Draw dropdown arrow
+        local arrow_size = 8
+        local arrow_x = self.props.x + self.props.w - arrow_size - 10
+        local arrow_y = self.props.y + (self.props.h - arrow_size) / 2
+
+        backend.graphics.set_color(unpack(self.props.text_color))
+        if self.props.opened then
+            -- Up arrow
+            backend.graphics.polygon("fill",
+                arrow_x, arrow_y + arrow_size,
+                arrow_x + arrow_size, arrow_y + arrow_size,
+                arrow_x + arrow_size / 2, arrow_y
+            )
+        else
+            -- Down arrow
+            backend.graphics.polygon("fill",
+                arrow_x, arrow_y,
+                arrow_x + arrow_size, arrow_y,
+                arrow_x + arrow_size / 2, arrow_y + arrow_size
+            )
+        end
+
+        -- Draw options if dropdown is opened
+        if self.props.opened then
+            for i, option in ipairs(self.props.options) do
+                local option_y = self.props.y + self.props.h + (i - 1) * self.props.h
+
+                -- Draw option background
+                if i == self.props.hovered_option then
+                    backend.graphics.set_color(unpack(self.props.hover_color))
+                else
+                    backend.graphics.set_color(unpack(self.props.background_color))
+                end
+
+                backend.graphics.rectangle("fill", self.props.x, option_y, self.props.w, self.props.h)
+
+                -- Draw option text
+                backend.graphics.set_color(unpack(self.props.text_color))
+                backend.graphics.print(
+                    option,
+                    self.props.x + 10,
+                    option_y + (self.props.h - doma.style.font:getHeight()) / 2
+                )
+
+                -- Draw border
+                backend.graphics.set_color(unpack(self.props.border_color))
+                backend.graphics.rectangle("line", self.props.x, option_y, self.props.w, self.props.h)
+            end
+        end
+    end
+
+    table.insert(doma.persistent_elements, dropdown)
+    return dropdown
+end
+
 function doma.draw()
     backend.graphics.set_font(doma.style.font)
 
@@ -504,6 +796,17 @@ function doma.draw()
     end
 
     doma.elements = {}
+end
+
+function doma.update(dt)
+    animation.update(dt)
+
+    -- Then update any elements that need regular updates
+    for _, elem in ipairs(doma.persistent_elements) do
+        if elem.update then
+            elem:update(dt)
+        end
+    end
 end
 
 return doma
