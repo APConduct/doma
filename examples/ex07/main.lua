@@ -2,16 +2,18 @@ local love = require("love")
 local doma = require("doma")
 local event = doma.event
 
+
 local theme_buttons = {}
 local animated_button
 local animated_slider
 local animate_checkbox
+local main_container
 
 function love.load()
     love.window.setTitle("DOMA UI - Theming & Animations")
 
     -- Create main container
-    local container = doma.container(50, 50, 600, 400)
+    main_container = doma.container(50, 50, 600, 400)
 
     -- Add title
     local title = doma.element("text", {
@@ -20,7 +22,7 @@ function love.load()
         y = 20,
         font_size = 24
     })
-    container:add_element(title)
+    main_container:add_element(title)
 
     -- Create theme selector buttons
     local theme_names = { "default", "dark", "light" }
@@ -30,7 +32,7 @@ function love.load()
             update_theme_colors()
         end)
         table.insert(theme_buttons, btn)
-        container:add_element(btn)
+        main_container:add_element(btn)
     end
 
     -- Create animated elements
@@ -45,12 +47,12 @@ function love.load()
             end
         })
     end)
-    container:add_element(animated_button)
+    main_container:add_element(animated_button)
 
     animated_slider = doma.slider(20, 220, 300, 0, 100, 50, {
         show_value = true
     })
-    container:add_element(animated_slider)
+    main_container:add_element(animated_slider)
 
     -- Start an automatic animation for the slider
     doma.animation.tween(animated_slider, "value", 0, 100, 3, {
@@ -87,7 +89,7 @@ function love.load()
             end
         end
     })
-    container:add_element(animate_checkbox)
+    main_container:add_element(animate_checkbox)
 
     -- Create a pulsing element to demonstrate more complex animation
     local pulse_circle = doma.element("circle", {
@@ -96,7 +98,7 @@ function love.load()
         radius = 40,
         color = { 0.4, 0.7, 1, 1 }
     })
-    container:add_element(pulse_circle)
+    main_container:add_element(pulse_circle)
 
     -- Custom draw method for the circle
     pulse_circle.draw = function(self)
@@ -142,38 +144,88 @@ end
 
 function update_theme_colors()
     local current_theme = doma.theme.get()
+    local colors = current_theme.colors or {}
+    local doma_utils = doma.utils -- Reference to utils to fix undefined global
+
+    -- Update background color for the container
+    if main_container then
+        main_container.props.background_color = colors.background or { 0.2, 0.2, 0.2, 1 }
+    end
 
     -- Update colors for various UI components
     for _, button in ipairs(theme_buttons) do
         if button.props.label == doma.theme.current then
             -- Highlight current theme button
-            button.props.default_color = current_theme.colors.accent
-            button.props.current_color = current_theme.colors.accent
-            button.props.default_text_color = current_theme.colors.background
-            button.props.current_text_color = current_theme.colors.background
+            button.props.default_color = colors.accent or { 0.4, 0.7, 1, 1 }
+            button.props.current_color = colors.accent or { 0.4, 0.7, 1, 1 }
+
+            -- Get contrasting text color for accent
+            local text_color = doma_utils.colors.contrast(
+                colors.accent or { 0.4, 0.7, 1, 1 },
+                { 0.9, 0.9, 0.9, 1 }, -- light
+                { 0.1, 0.1, 0.1, 1 }  -- dark
+            )
+
+            button.props.default_text_color = text_color
+            button.props.current_text_color = text_color
         else
             -- Regular appearance for other theme buttons
-            button.props.default_color = current_theme.colors.primary
-            button.props.current_color = current_theme.colors.primary
-            button.props.default_text_color = current_theme.colors.text
-            button.props.current_text_color = current_theme.colors.text
+            button.props.default_color = colors.primary or { 1, 1, 1, 1 }
+            button.props.current_color = colors.primary or { 1, 1, 1, 1 }
+
+            -- Get contrasting text color for primary
+            local text_color = doma_utils.colors.contrast(
+                colors.primary or { 1, 1, 1, 1 },
+                { 0.9, 0.9, 0.9, 1 }, -- light
+                { 0.1, 0.1, 0.1, 1 }  -- dark
+            )
+
+            button.props.default_text_color = text_color
+            button.props.current_text_color = text_color
         end
     end
 
     -- Update animated button colors
-    animated_button.props.default_color = current_theme.colors.primary
-    animated_button.props.current_color = current_theme.colors.primary
-    animated_button.props.default_text_color = current_theme.colors.text
-    animated_button.props.current_text_color = current_theme.colors.text
+    animated_button.props.default_color = colors.primary or { 1, 1, 1, 1 }
+    animated_button.props.current_color = colors.primary or { 1, 1, 1, 1 }
+
+    -- Get contrasting text color for primary
+    local button_text_color = doma_utils.colors.contrast(
+        colors.primary or { 1, 1, 1, 1 },
+        { 0.9, 0.9, 0.9, 1 }, -- light
+        { 0.1, 0.1, 0.1, 1 }  -- dark
+    )
+
+    animated_button.props.default_text_color = button_text_color
+    animated_button.props.current_text_color = button_text_color
 
     -- Update slider colors
-    animated_slider.props.background_color = current_theme.colors.secondary
-    animated_slider.props.active_color = current_theme.colors.accent
+    animated_slider.props.background_color = colors.secondary or { 0.8, 0.8, 0.8, 1 }
+    animated_slider.props.active_color = colors.accent or { 0.4, 0.7, 1, 1 }
 
     -- Update checkbox colors
-    animate_checkbox.props.box_color = current_theme.colors.primary
-    animate_checkbox.props.check_color = current_theme.colors.accent
-    animate_checkbox.props.text_color = current_theme.colors.text
+    animate_checkbox.props.box_color = colors.primary or { 1, 1, 1, 1 }
+    animate_checkbox.props.check_color = colors.accent or { 0.4, 0.7, 1, 1 }
+
+    -- Very important: select text color based on the container's background
+    local container_bg = main_container and main_container.props.background_color or colors.background
+    local checkbox_text_color = doma_utils.colors.contrast(
+        container_bg or { 0.2, 0.2, 0.2, 1 },
+        { 0.9, 0.9, 0.9, 1 }, -- light
+        { 0.1, 0.1, 0.1, 1 }  -- dark
+    )
+
+    animate_checkbox.props.text_color = checkbox_text_color
+
+    for _, child in ipairs(main_container.children) do
+        if child.type == "text" then
+            child.props.text_color = doma_utils.colors.contrast(
+                main_container.props.background_color,
+                { 0.9, 0.9, 0.9, 1 },   -- light text
+                { 0.1, 0.1, 0.1, 1 }    -- dark text
+            )
+        end
+    end
 end
 
 function love.update(dt)

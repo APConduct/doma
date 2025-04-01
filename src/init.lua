@@ -19,6 +19,7 @@ local doma = {
     event = event,
     animation = animation,
     theme = theme,
+    utils = utils
 }
 
 doma.style = {
@@ -433,21 +434,45 @@ function doma.radio_group(name, options, props)
 end
 
 function doma.container(x, y, w, h)
+    options = options or {}
+
+    -- Get current theme
+    local current_theme = doma.theme.get()
+    local theme_colors = current_theme.colors or {}
+
     local cont = {
         type = "container",
-        props = { x = x, y = y, w = w, h = h },
+        props = {
+            x = x,
+            y = y,
+            w = w,
+            h = h,
+            corner_radius = options.corner_radius or 3,
+            background_color = options.background_color or theme_colors.background or { 0.2, 0.2, 0.2, 1 }
+        },
         children = {},
         persistent = true,
         draw = function(self)
             -- Draw container with slight rounding
-            backend.graphics.set_color(0.2, 0.2, 0.2, 1)
+            backend.graphics.set_color(unpack(self.props.background_color))
             utils.draw_rounded_rect("fill", self.props.x, self.props.y, self.props.w, self.props.h,
                 self.props.corner_radius or 3)
 
             for _, child in ipairs(self.children) do
                 if child.type == "text" then
-                    -- Handle text elements
-                    backend.graphics.set_color(child.props.text_color or { 1, 1, 1, 1 })
+                    -- Handle text elements with proper contrast
+                    local text_color = child.props.text_color
+
+                    -- If no explicit text color, calculate based on container background
+                    if not text_color then
+                        text_color = utils.colors.contrast(
+                            self.props.background_color,
+                            { 0.9, 0.9, 0.9, 1 },   -- light text for dark backgrounds
+                            { 0.1, 0.1, 0.1, 1 }    -- dark text for light backgrounds
+                        )
+                    end
+
+                    backend.graphics.set_color(unpack(text_color))
                     local font = child.props.font_size
                         and backend.graphics.new_font(child.props.font_size)
                         or doma.style.font
@@ -607,6 +632,13 @@ end
 
 function doma.checkbox(x, y, label, checked, options)
     options = options or {}
+
+    -- Get current theme colors, with fallbacks
+    local current_theme = doma.theme.get()
+    local theme_colors = current_theme.colors or {}
+    local derived_colors = current_theme.derived_colors or {}
+
+    -- Set up checkbox with proper contrast colors
     local checkbox = doma.element("checkbox", {
         x = x,
         y = y,
@@ -614,9 +646,14 @@ function doma.checkbox(x, y, label, checked, options)
         h = options.size or 20,
         label = label or "",
         checked = checked or false,
-        box_color = options.box_color or White,
-        check_color = options.check_color or { 0.2, 0.7, 0.9, 1 },
-        text_color = options.text_color or White,
+
+        -- Use theme colors with fallbacks
+        box_color = options.box_color or theme_colors.primary or { 1, 1, 1, 1 },
+        check_color = options.check_color or theme_colors.accent or { 0.4, 0.7, 1, 1 },
+
+        -- For text color, determine based on background since it's displayed outside the checkbox
+        text_color = options.text_color or derived_colors.background_text or theme_colors.text or { 1, 1, 1, 1 },
+
         on_change = options.on_change
     })
 
@@ -635,7 +672,7 @@ function doma.checkbox(x, y, label, checked, options)
     end)
 
     checkbox.draw = function(self)
-        -- Draw box
+        -- Draw box outline
         backend.graphics.set_color(unpack(self.props.box_color))
         utils.draw_rounded_rect("line", self.props.x, self.props.y, self.props.w, self.props.h, 3)
 
@@ -653,7 +690,19 @@ function doma.checkbox(x, y, label, checked, options)
 
         -- Draw label
         if self.props.label and self.props.label ~= "" then
-            backend.graphics.set_color(unpack(self.props.text_color))
+            -- Make sure text color exists and is appropriate for current theme
+            local text_color = self.props.text_color
+
+            -- If we're in a container, the label should contrast with the container background
+            if self.props.parent and self.props.parent.props.background_color then
+                text_color = utils.colors.contrast(
+                    self.props.parent.props.background_color,
+                    { 0.9, 0.9, 0.9, 1 }, -- light text
+                    { 0.1, 0.1, 0.1, 1 }  -- dark text
+                )
+            end
+
+            backend.graphics.set_color(unpack(text_color))
             backend.graphics.print(
                 self.props.label,
                 self.props.x + self.props.w + 10,
@@ -852,6 +901,17 @@ function doma.update(dt)
         if elem.update then
             elem:update(dt)
         end
+    end
+end
+
+function doma.get_contrasting_text_color(background_color)
+    local luminance = 0.299 * background_color[1] +
+        0.587 * background_color[2] +
+        0.114 * background_color[3]
+    if luminance > 0.5 then
+        return { 0.1, 0.1, 0.1, 1 } -- Dark text for light backgrounds
+    else
+        return { 0.9, 0.9, 0.9, 1 } -- Light text for dark backgrounds
     end
 end
 

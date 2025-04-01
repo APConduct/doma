@@ -144,4 +144,32 @@ function utils.wrap_text(text, max_width, font)
     return lines
 end
 
+function utils.colors.lighten(color, amount)
+    return {
+        math.min(1, color[1] + amount),
+        math.min(1, color[2] + amount),
+        math.min(1, color[3] + amount),
+        color[4]
+    }
+end
+
+function utils.colors.darken(color, amount)
+    return {
+        math.max(0, color[1] - amount),
+        math.max(0, color[2] - amount),
+        math.max(0, color[3] - amount),
+        color[4]
+    }
+end
+
+function utils.colors.contrast(base_color, light_color, dark_color)
+    -- Simple luminance calculation
+    local luminance = 0.299 * base_color[1] + 0.587 * base_color[2] + 0.114 * base_color[3]
+    if luminance > 0.5 then
+        return dark_color  -- Use dark for light backgrounds
+    else
+        return light_color -- Use light for dark backgrounds
+    end
+end
+
 return utils

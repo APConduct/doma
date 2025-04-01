@@ -12,6 +12,10 @@ theme.themes.default = {
         secondary = { 0.8, 0.8, 0.8, 1 },
         background = { 0.2, 0.2, 0.2, 1 },
         text = { 1, 1, 1, 1 },
+        text_on_primary = { 0.1, 0.1, 0.1, 1 },    -- Auto-calculated below
+        text_on_secondary = { 0.1, 0.1, 0.1, 1 },  -- Auto-calculated below
+        text_on_background = { 0.9, 0.9, 0.9, 1 }, -- Auto-calculated below
+        text_on_accent = { 0.1, 0.1, 0.1, 1 },     -- Auto-calculated below
         accent = { 0.4, 0.7, 1, 1 },
         success = { 0.2, 0.8, 0.2, 1 },
         warning = { 1, 0.8, 0.2, 1 },
@@ -70,7 +74,7 @@ theme.themes.dark.colors = {
 -- Light theme
 theme.themes.light = utils.clone(theme.themes.default)
 theme.themes.light.colors = {
-    primary = { 0.1, 0.1, 0.1, 1 },
+    primary = { 0.3, 0.3, 0.3, 1 },
     secondary = { 0.3, 0.3, 0.3, 1 },
     background = { 0.9, 0.9, 0.9, 1 },
     text = { 0.1, 0.1, 0.1, 1 },
@@ -80,20 +84,10 @@ theme.themes.light.colors = {
     error = { 0.7, 0.1, 0.1, 1 },
 }
 
-function theme.set(theme_name)
-    if theme.themes[theme_name] then
-        theme.current = theme_name
-    else
-        error("Theme '" .. theme_name .. "' doesn't exist")
-    end
-end
+local original_set = theme.set
 
 function theme.get()
-    return theme.themes[theme.current]
-end
-
-function theme.add(name, theme_data)
-    theme.themes[name] = theme_data
+    return theme.themes[theme.current] or theme.themes.default
 end
 
 function theme.extend(name, base_theme, overrides)
@@ -104,5 +98,78 @@ function theme.extend(name, base_theme, overrides)
 
     theme.themes[name] = utils.merge(utils.clone(base), overrides)
 end
+
+function theme.get_contrasting_text(bg_color, options)
+    options = options or {}
+    local light_color = options.light_color or { 0.9, 0.9, 0.9, 1 }
+    local dark_color = options.dark_color or { 0.1, 0.1, 0.1, 1 }
+
+    return utils.colors.contrast(bg_color, light_color, dark_color)
+end
+
+function theme.get_text_color(background_color)
+    local light_text = { 0.9, 0.9, 0.9, 1 }
+    local dark_text = { 0.2, 0.2, 0.2, 1 }
+    local luminance = 0.299 * background_color[1] + 0.587 * background_color[2] + 0.114 * background_color[3]
+    if luminance > 0.5 then
+        return dark_text  -- Dark text for light backgrounds
+    else
+        return light_text -- Light text for dark backgrounds
+    end
+end
+
+local function add_derived_colors(theme_data)
+    -- Make sure colors exist
+    theme_data.colors = theme_data.colors or {
+        primary = { 1, 1, 1, 1 },
+        secondary = { 0.8, 0.8, 0.8, 1 },
+        background = { 0.2, 0.2, 0.2, 1 },
+        text = { 1, 1, 1, 1 },
+        accent = { 0.4, 0.7, 1, 1 }
+    }
+
+    -- Create derived colors based on contrast
+    theme_data.derived_colors = {
+        primary_text = theme.get_text_color(theme_data.colors.primary),
+        secondary_text = theme.get_text_color(theme_data.colors.secondary),
+        accent_text = theme.get_text_color(theme_data.colors.accent),
+        background_text = theme.get_text_color(theme_data.colors.background or { 0.2, 0.2, 0.2, 1 }),
+
+        -- Add more if needed
+        success_text = theme_data.colors.success and theme.get_text_color(theme_data.colors.success) or
+            { 0.1, 0.1, 0.1, 1 },
+        warning_text = theme_data.colors.warning and theme.get_text_color(theme_data.colors.warning) or
+            { 0.1, 0.1, 0.1, 1 },
+        error_text = theme_data.colors.error and theme.get_text_color(theme_data.colors.error) or { 0.9, 0.9, 0.9, 1 }
+    }
+
+    return theme_data
+end
+
+theme.themes.default = add_derived_colors(theme.themes.default)
+theme.themes.dark = add_derived_colors(theme.themes.dark)
+theme.themes.light = add_derived_colors(theme.themes.light)
+
+function theme.set(theme_name)
+    if theme.themes[theme_name] then
+        -- Make sure derived colors are present
+        add_derived_colors(theme.themes[theme_name])
+        theme.current = theme_name
+    else
+        error("Theme '" .. theme_name .. "' doesn't exist")
+    end
+end
+
+local original_add = theme.add
+function theme.add(name, theme_data)
+    theme.themes[name] = add_derived_colors(theme_data)
+end
+
+theme.themes.default = add_derived_colors(theme.themes.default)
+theme.themes.dark = add_derived_colors(theme.themes.dark)
+theme.themes.light = add_derived_colors(theme.themes.light)
+
+theme.current = "default"
+
 
 return theme
