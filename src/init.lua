@@ -49,7 +49,7 @@ function doma.button(label, x, y, w, h, on_click, on_hover, on_end_hover)
     })
 
     -- Mouse hover event
-    event.on("mousemoved", function(mx, my)
+    event.on("mousemoved", function(e, mx, my)
         local abs_x = btn.props.x + (btn.props.parent and btn.props.parent.props.x or 0)
         local abs_y = btn.props.y + (btn.props.parent and btn.props.parent.props.y or 0)
 
@@ -65,7 +65,7 @@ function doma.button(label, x, y, w, h, on_click, on_hover, on_end_hover)
     end)
 
     -- Mouse click event
-    event.on("mousepressed", function(mx, my, button)
+    event.on("mousepressed", function(e, mx, my, button)
         local abs_x = btn.props.x + (btn.props.parent and btn.props.parent.props.x or 0)
         local abs_y = btn.props.y + (btn.props.parent and btn.props.parent.props.y or 0)
 
@@ -96,7 +96,7 @@ function doma.draggable(x, y, w, h)
     -- Add to persistent elements
     table.insert(doma.persistent_elements, obj)
 
-    event.on("mousepressed", function(mx, my, button)
+    event.on("mousepressed", function(e, mx, my, button)
         local absolute_x = obj.props.x + (obj.props.parent and obj.props.parent.props.x or 0)
         local absolute_y = obj.props.y + (obj.props.parent and obj.props.parent.props.y or 0)
 
@@ -111,7 +111,7 @@ function doma.draggable(x, y, w, h)
         end
     end)
 
-    event.on("mousemoved", function(mx, my)
+    event.on("mousemoved", function(e, mx, my)
         if obj.props.dragging then
             if obj.props.parent then
                 -- If in container, constrain to container bounds
@@ -131,7 +131,7 @@ function doma.draggable(x, y, w, h)
         end
     end)
 
-    event.on("mousereleased", function()
+    event.on("mousereleased", function(e)
         obj.props.dragging = false
     end)
 
@@ -163,7 +163,7 @@ function doma.textinput(x, y, w, h, placeholder, options)
     })
 
     -- Handle text input
-    event.on("textinput", function(t)
+    event.on("textinput", function(e, t)
         if input.props.selected and #input.props.text < input.props.max_length then
             input.props.text = input.props.text:sub(1, input.props.cursor_position)
                 .. t
@@ -176,7 +176,7 @@ function doma.textinput(x, y, w, h, placeholder, options)
     end)
 
     -- Handle keyboard events
-    event.on("keypressed", function(key)
+    event.on("keypressed", function(e, key)
         if not input.props.selected then return end
 
         if key == "backspace" then
@@ -203,7 +203,7 @@ function doma.textinput(x, y, w, h, placeholder, options)
     end)
 
     -- Handle mouse interaction
-    event.on("mousepressed", function(mx, my, button)
+    event.on("mousepressed", function(e, mx, my, button)
         local abs_x = input.props.x + (input.props.parent and input.props.parent.props.x or 0)
         local abs_y = input.props.y + (input.props.parent and input.props.parent.props.y or 0)
 
