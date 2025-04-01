@@ -1,0 +1,8 @@
+{
+    "diagnostics.globals": [
+        "event_data"
+    ],
+    "diagnostics.disable": [
+        "deprecated"
+    ]
+}

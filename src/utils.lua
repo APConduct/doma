@@ -2,6 +2,72 @@ local backend = require("src.backend")
 
 local utils = {}
 
+utils.clone = function(t)
+    if type(t) ~= "table" then return t end
+    local copy = {}
+    for k, v in pairs(t) do
+        copy[k] = type(v) == "table" and utils.clone(v) or v
+    end
+    return copy
+end
+
+utils.merge = function(t1, t2)
+    local merged = utils.clone(t1)
+    for k, v in pairs(t2) do
+        if type(v) == "table" and type(merged[k]) == "table" then
+            merged[k] = utils.merge(merged[k], v)
+        else
+            merged[k] = v
+        end
+    end
+    return merged
+end
+
+utils.colors = {
+    rgba = function(r, g, b, a)
+        return { r / 255, g / 255, b / 255, a / 255 }
+    end,
+
+    hex_to_rgb = function(hex)
+        hex = hex:gsub("#", "")
+        return {
+            tonumber("0x" .. hex:sub(1, 2)) / 255,
+            tonumber("0x" .. hex:sub(3, 4)) / 255,
+            tonumber("0x" .. hex:sub(5, 6)) / 255,
+            #hex == 8 and tonumber("0x" .. hex:sub(7, 8)) / 255 or 1
+        }
+    end,
+
+    rgb_to_hex = function(r, g, b, a)
+        local hex = string.format("%02x%02x%02x", r * 255, g * 255, b * 255)
+        if a then
+            hex = hex .. string.format("%02x", a * 255)
+        end
+        return hex
+    end,
+
+}
+
+utils.math = {
+    lerp = function(a, b, t)
+        return a + (b - a) * t
+    end,
+
+    clamp = function(val, min, max)
+        return math.min(math.max(val, min), max)
+    end
+}
+
+utils.string = {
+    split = function(str, delimiter)
+        local result = {}
+        for match in (str .. delimiter):gmatch("(.-)" .. delimiter) do
+            table.insert(result, match)
+        end
+        return result
+    end
+}
+
 function utils.draw_rounded_rect(mode, x, y, w, h, radius)
     if radius <= 0 then
         backend.graphics.rectangle(mode, x, y, w, h)
