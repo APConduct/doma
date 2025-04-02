@@ -2,12 +2,19 @@ local love = require("love")
 local doma = require("doma")
 local event = doma.event
 
-
 local theme_buttons = {}
 local animated_button
 local animated_slider
 local animate_checkbox
 local main_container
+local pulse_circle
+
+-- Animation IDs
+local animation_ids = {
+    slider = nil,
+    circle_radius = nil,
+    circle_color = nil
+}
 
 function love.load()
     love.window.setTitle("DOMA UI - Theming & Animations")
@@ -54,45 +61,8 @@ function love.load()
     })
     main_container:add_element(animated_slider)
 
-    -- Start an automatic animation for the slider
-    doma.animation.tween(animated_slider, "value", 0, 100, 3, {
-        easing = "in_out_cubic",
-        repeat_count = -1, -- infinite
-        repeat_delay = 0.5,
-        on_update = function(target, progress)
-            if target.props.on_change then
-                target.props.on_change(target.props.value)
-            end
-        end
-    })
-
-    -- Add a checkbox to enable/disable animations
-    animate_checkbox = doma.checkbox(20, 270, "Enable animations", true, {
-        on_change = function(checked)
-            if checked then
-                -- Resume animations
-                doma.animation.tween(animated_slider, "value", animated_slider.props.value, 100, 3, {
-                    easing = "in_out_cubic",
-                    repeat_count = -1,
-                    repeat_delay = 0.5,
-                    on_update = function(target, progress)
-                        if target.props.on_change then
-                            target.props.on_change(target.props.value)
-                        end
-                    end
-                })
-            else
-                -- Cancel all animations
-                for id, _ in pairs(doma.animation.active) do
-                    doma.animation.cancel(id)
-                end
-            end
-        end
-    })
-    main_container:add_element(animate_checkbox)
-
-    -- Create a pulsing element to demonstrate more complex animation
-    local pulse_circle = doma.element("circle", {
+    -- Create the pulsing circle element BEFORE any animation functions reference it
+    pulse_circle = doma.element("circle", {
         x = 400,
         y = 220,
         radius = 40,
@@ -115,33 +85,104 @@ function love.load()
                 self.props.radius)
         end
     end
-    -- Animate the circle to pulse
-    doma.animation.keyframes(pulse_circle, "radius", {
-        { time = 0,   value = 40 },
-        { time = 0.5, value = 60 },
-        { time = 1,   value = 40 }
-    }, {
-        duration = 2,
-        repeat_count = -1,
-        easing = "in_out_quad"
-    })
 
-    -- Animate circle color to change over time
-    doma.animation.keyframes(pulse_circle, "color", {
-        { time = 0,    value = { 0.4, 0.7, 1, 1 } },
-        { time = 0.33, value = { 1, 0.4, 0.7, 1 } },
-        { time = 0.66, value = { 0.7, 1, 0.4, 1 } },
-        { time = 1,    value = { 0.4, 0.7, 1, 1 } }
-    }, {
-        duration = 6,
-        repeat_count = -1,
-        easing = "linear"
+    -- Define animation functions
+    local function reset_slider_animation()
+        -- Cancel existing animation if it exists
+        if animation_ids.slider then
+            doma.animation.cancel(animation_ids.slider)
+        end
+
+        -- Reset to initial state
+        animated_slider.props.value = 0
+
+        -- Create new animation and store its ID
+        animation_ids.slider = doma.animation.tween(animated_slider, "value", 0, 100, 3, {
+            easing = "in_out_cubic",
+            repeat_count = -1,
+            repeat_delay = 0.5,
+            on_update = function(target, progress)
+                if target.props.on_change then
+                    target.props.on_change(target.props.value)
+                end
+            end
+        })
+
+        return animation_ids.slider
+    end
+
+    local function reset_circle_animations()
+        -- Cancel existing animations
+        if animation_ids.circle_radius then
+            doma.animation.cancel(animation_ids.circle_radius)
+        end
+        if animation_ids.circle_color then
+            doma.animation.cancel(animation_ids.circle_color)
+        end
+
+        -- Reset to initial state
+        pulse_circle.props.radius = 40
+        pulse_circle.props.color = { 0.4, 0.7, 1, 1 }
+
+        -- Create new animations and store their IDs
+        animation_ids.circle_radius = doma.animation.keyframes(pulse_circle, "radius", {
+            { time = 0,   value = 40 },
+            { time = 0.5, value = 60 },
+            { time = 1,   value = 40 }
+        }, {
+            duration = 2,
+            repeat_count = -1,
+            easing = "in_out_quad"
+        })
+
+        animation_ids.circle_color = doma.animation.keyframes(pulse_circle, "color", {
+            { time = 0,    value = { 0.4, 0.7, 1, 1 } },
+            { time = 0.33, value = { 1, 0.4, 0.7, 1 } },
+            { time = 0.66, value = { 0.7, 1, 0.4, 1 } },
+            { time = 1,    value = { 0.4, 0.7, 1, 1 } }
+        }, {
+            duration = 6,
+            repeat_count = -1,
+            easing = "linear"
+        })
+
+        return { radius = animation_ids.circle_radius, color = animation_ids.circle_color }
+    end
+
+    -- Helper function to stop all animations
+    local function stop_all_animations()
+        for id, _ in pairs(doma.animation.active) do
+            doma.animation.cancel(id)
+        end
+        animation_ids = { slider = nil, circle_radius = nil, circle_color = nil }
+    end
+
+    -- Initialize animations function
+    local function initialize_animations()
+        reset_slider_animation()
+        reset_circle_animations()
+    end
+
+    -- Add a checkbox to enable/disable animations
+    animate_checkbox = doma.checkbox(20, 270, "Enable animations", true, {
+        on_change = function(checked)
+            if checked then
+                initialize_animations()
+            else
+                stop_all_animations()
+            end
+        end
     })
+    main_container:add_element(animate_checkbox)
+
+    -- Now it's safe to initialize animations
+    initialize_animations()
 
     -- Update colors based on current theme
     update_theme_colors()
 end
 
+-- Using the theme logic that was working perfectly
 function update_theme_colors()
     local current_theme = doma.theme.get()
     local colors = current_theme.colors or {}
@@ -221,8 +262,8 @@ function update_theme_colors()
         if child.type == "text" then
             child.props.text_color = doma_utils.colors.contrast(
                 main_container.props.background_color,
-                { 0.9, 0.9, 0.9, 1 },   -- light text
-                { 0.1, 0.1, 0.1, 1 }    -- dark text
+                { 0.9, 0.9, 0.9, 1 }, -- light text
+                { 0.1, 0.1, 0.1, 1 }  -- dark text
             )
         end
     end
