@@ -1,5 +1,5 @@
 package = "doma"
-version = "1.0-1"
+version = "0.1.0-1"
 source = {
    url = "git+https://github.com/APConduct/doma.git",
 }
