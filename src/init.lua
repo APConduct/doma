@@ -467,8 +467,8 @@ function doma.container(x, y, w, h)
                     if not text_color then
                         text_color = utils.colors.contrast(
                             self.props.background_color,
-                            { 0.9, 0.9, 0.9, 1 },   -- light text for dark backgrounds
-                            { 0.1, 0.1, 0.1, 1 }    -- dark text for light backgrounds
+                            { 0.9, 0.9, 0.9, 1 }, -- light text for dark backgrounds
+                            { 0.1, 0.1, 0.1, 1 }  -- dark text for light backgrounds
                         )
                     end
 
@@ -619,7 +619,14 @@ function doma.slider(x, y, width, min_val, max_val, current_val, options)
 
         -- Draw value if needed
         if self.props.show_value then
-            backend.graphics.set_color(1, 1, 1, 1)
+            -- Use value_text_color from props, or get contrasting color based on background
+            local text_color = self.props.value_text_color or
+                utils.colors.contrast(
+                    self.props.parent and self.props.parent.props.background_color or { 0.2, 0.2, 0.2, 1 },
+                    { 0.9, 0.9, 0.9, 1 },   -- light text
+                    { 0.1, 0.1, 0.1, 1 }    -- dark text
+                )
+            backend.graphics.set_color(unpack(text_color))
             local value_str = self.props.format_value(self.props.value)
             local text_width = doma.style.font:getWidth(value_str)
             backend.graphics.print(value_str, x + w + 10, y + (h - doma.style.font:getHeight()) / 2)

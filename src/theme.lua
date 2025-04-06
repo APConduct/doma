@@ -5,6 +5,18 @@ local theme = {
     themes = {}
 }
 
+local function calculate_derived_colors(colors)
+    local light_text = { 0.9, 0.9, 0.9, 1 }
+    local dark_text = { 0.2, 0.2, 0.2, 1 }
+
+    return {
+        primary_text = utils.colors.contrast(colors.primary, light_text, dark_text),
+        secondary_text = utils.colors.contrast(colors.secondary, light_text, dark_text),
+        accent_text = utils.colors.contrast(colors.accent, light_text, dark_text),
+        background_text = utils.colors.contrast(colors.background, light_text, dark_text)
+    }
+end
+
 -- Default theme
 theme.themes.default = {
     colors = {
@@ -58,6 +70,9 @@ theme.themes.default = {
     }
 }
 
+-- Calculate derived colors for default theme
+theme.themes.default.derived_colors = calculate_derived_colors(theme.themes.default.colors)
+
 -- Dark theme
 theme.themes.dark = utils.clone(theme.themes.default)
 theme.themes.dark.colors = {
@@ -70,6 +85,10 @@ theme.themes.dark.colors = {
     warning = { 0.9, 0.7, 0.2, 1 },
     error = { 0.7, 0.2, 0.2, 1 },
 }
+
+-- Calculate derived colors for dark theme
+theme.themes.dark.derived_colors = calculate_derived_colors(theme.themes.dark.colors)
+
 
 -- Light theme
 theme.themes.light = utils.clone(theme.themes.default)
@@ -84,6 +103,8 @@ theme.themes.light.colors = {
     error = { 0.7, 0.1, 0.1, 1 },
 }
 
+-- Calculate derived colors for light theme
+theme.themes.light.derived_colors = calculate_derived_colors(theme.themes.light.colors)
 local original_set = theme.set
 
 function theme.get()
