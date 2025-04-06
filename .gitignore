@@ -39,6 +39,9 @@ luac.out
 *.x86_64
 *.hex
 
+# LÖVE specific
+*.love
+
 /luarocks
 /lua
 /lua_modules

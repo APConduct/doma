@@ -16,5 +16,6 @@ build = {
       ["doma.layout"] = "src/layout.lua",
       ["doma.backend"] = "src/backend.lua",
 
-   }
+   },
+   dir = ".."
 }

@@ -4,6 +4,8 @@ local event = require("src.event")
 local utils = require("src.utils")
 local theme = require("src.theme")
 local animation = require("src.animation")
+local scene = require("src.scene")
+local app = require("src.app")
 
 local CURSOR_BLINK_TIME = 0.5
 local INPUT_PADDING = 5
@@ -19,8 +21,13 @@ local doma = {
     event = event,
     animation = animation,
     theme = theme,
-    utils = utils
+    utils = utils,
+    scene = scene,
+    app = app,
 }
+
+scene.init(doma)
+app.init(doma)
 
 doma.style = {
     font = backend.graphics.new_font(14),
@@ -623,8 +630,8 @@ function doma.slider(x, y, width, min_val, max_val, current_val, options)
             local text_color = self.props.value_text_color or
                 utils.colors.contrast(
                     self.props.parent and self.props.parent.props.background_color or { 0.2, 0.2, 0.2, 1 },
-                    { 0.9, 0.9, 0.9, 1 },   -- light text
-                    { 0.1, 0.1, 0.1, 1 }    -- dark text
+                    { 0.9, 0.9, 0.9, 1 }, -- light text
+                    { 0.1, 0.1, 0.1, 1 }  -- dark text
                 )
             backend.graphics.set_color(unpack(text_color))
             local value_str = self.props.format_value(self.props.value)
@@ -898,6 +905,11 @@ function doma.draw()
     end
 
     doma.elements = {}
+end
+
+function doma.clear()
+    doma.elements = {}
+    doma.persistent_elements = {}
 end
 
 function doma.update(dt)
