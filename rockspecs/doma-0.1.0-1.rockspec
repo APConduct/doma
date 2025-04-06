@@ -2,6 +2,7 @@ package = "doma"
 version = "0.1.0-1"
 source = {
    url = "git+https://github.com/APConduct/doma.git",
+   tag = "v0.1.0"
 }
 
 description = {
